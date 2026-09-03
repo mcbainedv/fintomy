@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fintomy-core"
+version = "0.1.0"
+description = "Shared models, scraping and indicator logic for Fintomy"
+requires-python = ">=3.11"
+dependencies = [
+    "SQLAlchemy>=2.0,<2.1",
+    "PyMySQL>=1.1",
+    "pandas>=2.1",
+    "numpy>=1.26",
+    "yfinance>=0.2.40",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8.0"]
+
+[tool.setuptools.packages.find]
+include = ["fintomy_core*"]

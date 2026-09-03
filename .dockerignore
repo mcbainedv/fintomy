@@ -1,0 +1,12 @@
+**/__pycache__/
+**/*.pyc
+**/.pytest_cache/
+**/node_modules/
+frontend/dist/
+**/.venv/
+**/venv/
+.git/
+.env
+*.db
+*.sqlite
+scratchpad/

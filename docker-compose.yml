@@ -1,0 +1,76 @@
+name: fintomy
+
+services:
+  db:
+    image: mariadb:11
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD:-change-me-root}
+      MARIADB_DATABASE: ${MARIADB_DATABASE:-fintomy}
+      MARIADB_USER: ${MARIADB_USER:-fintomy}
+      MARIADB_PASSWORD: ${MARIADB_PASSWORD:-fintomy}
+      TZ: ${TZ:-UTC}
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./db/init.sql:/docker-entrypoint-initdb.d/10-init.sql:ro,Z
+    # Uncomment to reach MariaDB from the host (e.g. a SQL client):
+    # ports:
+    #   - "127.0.0.1:33061:3306"
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-mysql+pymysql://fintomy:fintomy@db:3306/fintomy?charset=utf8mb4}
+      TZ: ${TZ:-UTC}
+      CORS_ORIGINS: "*"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/api/health', timeout=3).status==200 else 1)"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  scraper:
+    build:
+      context: .
+      dockerfile: scraper/Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-mysql+pymysql://fintomy:fintomy@db:3306/fintomy?charset=utf8mb4}
+      TZ: ${TZ:-UTC}
+      SCRAPE_HOUR: ${SCRAPE_HOUR:-17}
+      SCRAPE_MINUTE: ${SCRAPE_MINUTE:-0}
+      BACKFILL_PERIOD: ${BACKFILL_PERIOD:-2y}
+      DAILY_PERIOD: ${DAILY_PERIOD:-1mo}
+      SCRAPE_ON_START: ${SCRAPE_ON_START:-0}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ:-UTC}
+    ports:
+      - "${WEB_PORT:-6001}:6001"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  db_data:
